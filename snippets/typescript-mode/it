@@ -1,0 +1,7 @@
+# -*- mode: snippet -*-
+# name: it should
+# key: it
+# --
+it('should $0', () => {
+    $1
+})

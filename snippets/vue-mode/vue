@@ -1,0 +1,12 @@
+# -*- mode: snippet -*-
+# name: template 
+# key: vue
+# --
+<template>
+$0
+</template>
+
+<script>
+export default{
+}
+</script>

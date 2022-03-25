@@ -1,0 +1,7 @@
+# -*- mode: snippet -*-
+# name: <style lang="scss" scoped>
+# key: s
+# --
+<style lang="scss" scoped>
+$0
+</style>

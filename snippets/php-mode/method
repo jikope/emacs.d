@@ -1,0 +1,9 @@
+# -*- mode: snippet -*-
+# name: class method 
+# key: met
+# group: definitions
+# --
+${1:public} function ${2:name}(${3:args})
+{
+  $0	
+}

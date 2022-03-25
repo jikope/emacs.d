@@ -1,0 +1,20 @@
+# -*- mode: snippet -*-
+# name: blog
+# key: blog
+# --
+---
+title: "$1"
+date: `(format-time-string "%Y-%m-%d")`
+categories: ["$2"]
+tags:
+- $3
+description: "$4"
+thumbnail: "/posts/`(format-time-string "%Y-%m-%d")`-$6/"
+slug: "/posts/`(format-time-string "%Y-%m-%d")`-$6"
+discussionId: "/posts/`(format-time-string "%Y-%m-%d")`-$6"
+math: true
+toc: true
+draft: true
+---
+
+$0
