@@ -26,5 +26,6 @@
   (kill-this-buffer)
   (delete-window))
 
+
 (provide 'custom-function)
 ;;; custom-functions.el ends here

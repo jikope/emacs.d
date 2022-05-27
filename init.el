@@ -61,8 +61,9 @@
 (setq initial-frame-alist (quote ((fullscreen . maximized))))
 (add-hook 'after-init-hook 'save-place-mode)
 ;; (setq initial-major-mode 'fundamental-mode)
+(setq-default c-basic-offset 4)
 (setq-default tab-width 4)
-(setq-default line-spacing 3)
+(setq-default line-spacing 7)
 (setq-default evil-shift-width tab-width)
 (setq-default indent-tabs-mode nil)
 (menu-bar-mode -1)
@@ -85,9 +86,9 @@
 (window-divider-mode)
 
 (defvar jikope/default-font-size 105)
-(set-face-attribute 'default 'nil :family "Iosevka Term" :weight 'light :height jikope/default-font-size)
-(set-face-attribute 'fixed-pitch 'nil :family "Iosevka Term" :height 105 :weight 'light)
-(set-face-attribute 'variable-pitch nil :font "Roboto Condensed" :height 125 :weight 'light)
+(set-face-attribute 'default 'nil :family "Iosevka Mayukai Original" :weight 'light :height jikope/default-font-size)
+(set-face-attribute 'fixed-pitch 'nil :family "Iosevka Mayukai Original" :height jikope/default-font-size :weight 'light)
+(set-face-attribute 'variable-pitch nil :font "Roboto Condensed" :height jikope/default-font-size :weight 'regular)
 
 (use-package doom-modeline
   :ensure t
@@ -112,11 +113,12 @@
   (setq mlscroll-shortfun-min-width 11)
   (mlscroll-mode))
 
-(defun load-wsl-theme ()
-  (add-to-list 'custom-theme-load-path '"~/Git-Application/wsl-emacs/themes/")
-  (load-theme 'microsoft-teams-dark t))
+;; (defun load-wsl-theme ()
+;;   (add-to-list 'custom-theme-load-path '"~/Git-Application/wsl-emacs/themes/")
+;;   (load-theme 'atom-one-dark t))
+;; (add-hook 'emacs-startup-hook 'load-wsl-theme)
+(load-theme 'modus-operandi t)
 
-(add-hook 'after-init-hook 'load-wsl-theme)
 ;;(add-to-list 'custom-theme-load-path '"~/Git-Application/wsl-emacs/themes/")
 
 (use-package all-the-icons
@@ -127,12 +129,14 @@
   :ensure t
   :defer t)
 
+(use-package svg-tag-mode
+  :ensure t)
 
 (with-eval-after-load 'org
   ;; ------------------------------------------------------------
   ;; ORG UI
   ;; ------------------------------------------------------------
-  (setq header-line-format " ")
+  ;; (setq header-line-format " ")
   (setq org-startup-indented t
         org-image-actual-width nil
         org-startup-folded t
@@ -151,15 +155,105 @@
                   (org-level-7 . 1.1)
                   (org-level-8 . 1.1)))
     (set-face-attribute (car face) nil :weight 'regular :height (cdr face)))
-  (set-face-attribute 'org-todo 'nil :weight 'bold :box 'nil)
+  ;; (set-face-attribute 'org-level-1 'nil :height 125)
+  ;; (set-face-attribute 'org-level-2 'nil :height 115)
+  ;; (set-face-attribute 'org-todo 'nil :weight 'light :box 'nil)
+  (set-face-attribute 'org-ellipsis 'nil :underline nil)
+  (set-face-attribute 'org-date 'nil :underline nil)
 
   (add-hook 'org-mode-hook 'visual-line-mode)
 
-  (defun bima/org-set-font ()
-    (variable-pitch-mode)
-    (org-modern-mode))
+  (defconst date-re "[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}")
+  (defconst time-re "[0-9]\\{2\\}:[0-9]\\{2\\}")
+  (defconst day-re "[A-Za-z]\\{3\\}")
+  (defconst day-time-re (format "\\(%s\\)? ?\\(%s\\)?" day-re time-re))
 
-  (add-hook 'org-mode-hook #'bima/org-set-font)
+  (defun svg-progress-percent (value)
+    (svg-image (svg-lib-concat
+                (svg-lib-progress-bar (/ (string-to-number value) 100.0)
+                                      nil :margin 0 :stroke 2 :radius 3 :padding 2 :width 11)
+                (svg-lib-tag (concat value "%")
+                             nil :stroke 0 :margin 0)) :ascent 'center))
+
+  (defun svg-progress-count (value)
+    (let* ((seq (mapcar #'string-to-number (split-string value "/")))
+           (count (float (car seq)))
+           (total (float (cadr seq))))
+      (svg-image (svg-lib-concat
+                  (svg-lib-progress-bar (/ count total) nil
+                                        :margin 0 :stroke 2 :radius 3 :padding 2 :width 11)
+                  (svg-lib-tag value nil
+                               :stroke 0 :margin 0)) :ascent 'center)))
+
+  (setq svg-tag-tags
+        `(
+          ;; Org tags
+          ;; (":\\([A-Za-z0-9]+\\)" . ((lambda (tag) (svg-tag-make tag))))
+          ;; (":\\([A-Za-z0-9]+[ \-]\\)" . ((lambda (tag) tag)))
+          
+          ;; Task priority
+          ("\\[#[A-Z]\\]" . ( (lambda (tag)
+                                (svg-tag-make tag :face 'org-priority 
+                                              :beg 2 :end -1 :margin 0))))
+
+          ;; Progress
+          ("\\(\\[[0-9]\\{1,3\\}%\\]\\)" . ((lambda (tag)
+                                              (svg-progress-percent (substring tag 1 -2)))))
+          ("\\(\\[[0-9]+/[0-9]+\\]\\)" . ((lambda (tag)
+                                            (svg-progress-count (substring tag 1 -1)))))
+          
+          ;; TODO / DONE
+          ("TODO" . ((lambda (tag) (svg-tag-make "TODO" :face 'org-todo :inverse t :margin 0))))
+          ("DONE" . ((lambda (tag) (svg-tag-make "DONE" :face 'org-done :margin 0))))
+
+
+          ;; Citation of the form [cite:@Knuth:1984] 
+          ("\\(\\[cite:@[A-Za-z]+:\\)" . ((lambda (tag)
+                                            (svg-tag-make tag
+                                                          :inverse t
+                                                          :beg 7 :end -1
+                                                          :crop-right t))))
+          ("\\[cite:@[A-Za-z]+:\\([0-9]+\\]\\)" . ((lambda (tag)
+                                                     (svg-tag-make tag
+                                                                   :end -1
+                                                                   :crop-left t))))
+
+          
+          ;; Active date (with or without day name, with or without time)
+          (,(format "\\(<%s>\\)" date-re) .
+           ((lambda (tag)
+              (svg-tag-make tag :beg 1 :end -1 :margin 0))))
+          (,(format "\\(<%s \\)%s>" date-re day-time-re) .
+           ((lambda (tag)
+              (svg-tag-make tag :beg 1 :inverse nil :crop-right t :margin 0))))
+          (,(format "<%s \\(%s>\\)" date-re day-time-re) .
+           ((lambda (tag)
+              (svg-tag-make tag :end -1 :inverse t :crop-left t :margin 0))))
+
+          ;; Inactive date  (with or without day name, with or without time)
+          (,(format "\\(\\[%s\\]\\)" date-re) .
+           ((lambda (tag)
+              (svg-tag-make tag :beg 1 :end -1 :margin 0 :face 'org-date))))
+          (,(format "\\(\\[%s \\)%s\\]" date-re day-time-re) .
+           ((lambda (tag)
+              (svg-tag-make tag :beg 1 :inverse nil :crop-right t :margin 0 :face 'org-date))))
+          (,(format "\\[%s \\(%s\\]\\)" date-re day-time-re) .
+           ((lambda (tag)
+              (svg-tag-make tag :end -1 :inverse t :crop-left t :margin 0 :face 'org-date))))))
+
+  (setq org-modern-todo nil
+        org-modern-tag nil
+        org-modern-timestamp nil)
+
+  ;;(add-hook 'org-mode-hook #'org-modern-mode)
+  (add-hook 'org-agenda-finalize-hook #'org-modern-agenda)
+
+  (defun bima/org-set-font ()
+    (org-modern-mode)
+    (custom-set-faces '(org-modern-label ((t (:width normal)))))
+    (variable-pitch-mode)) 
+
+  (add-hook 'org-mode-hook 'bima/org-set-font)
 
   (defun bima/next-subtree-narrow ()
     "Move screen to next subtree and narrow it"
@@ -201,22 +295,25 @@
   ;; ORG BABEL
   ;; ------------------------------------------------------------
   (defun my-org-confirm-babel-evaluate (lang)
-    (not (member lang '("sh" "python" "sql" "js" "latex" "emacs-lisp"))))
+    (not (member lang '("sh" "python" "sql" "js" "latex"))))
 
-  (setq org-confirm-babel-evaluate 'my-org-confirm-babel-evaluate)
+  (setq org-confirm-babel-evaluate 'nil)
 
   ;; ob-js FIX
   (defvar org-babel-js-function-wrapper "console.log(JSON.stringify(require('util').inspect(function(){\n%s\n}())));")
 
-  (use-package ob-ipython
-    :ensure t)
+  ;; (use-package ob-ipython
+  ;;   :ensure t)
 
   (use-package ob-restclient
     :ensure t)
 
+  (use-package ob-mongo
+    :ensure t)
+
   (org-babel-do-load-languages
    'org-babel-load-languages
-   '((python . t) (restclient . t) (shell . t) (sql . t) (js . t) (latex . t)))
+   '((python . t) (restclient . t) (shell . t) (sql . t) (js . t) (latex . t) (mongo . t)))
 
   (add-to-list 'org-babel-tangle-lang-exts '("js" . "js"))
 
@@ -237,13 +334,15 @@
                          '((:name "Dinten Puniki"
                                   :time-grid t
                                   :todo "TODAY")
+                           (:name "Today but free hour"
+                                  :and (:scheduled today :not (:time-grid t)))
                            (:discard (:anything))))))
             (todo "" ((org-agenda-overriding-header "")
                       (org-super-agenda-groups
                        '((:name "Projects"
                                 :file-path "projects"
                                 :and (:todo "TODO" :tag "ACTIVE" :tag "Coding")
-                                :discard (:todo "PROJECT"))
+                                :discard (:todo "PROJECT" :habit t))
                          (:name "Overdue"
                                 :scheduled past
                                 :deadline past)
@@ -264,6 +363,26 @@
 
         org-agenda-time-grid (quote ((today require-timed remove-match) () "      " "┈┈┈┈┈┈┈┈┈┈┈┈┈"))
         org-agenda-prefix-format "   %i %?-8:c %?-2t% s")
+
+  ;; ORG HABIT
+  (setq org-habit-today-glyph ?◌
+        org-habit-graph-column 70
+        org-habit-following-days 1
+        org-habit-show-habits t
+        org-habit-completed-glyph ?●
+        org-habit-preceding-days 10
+        org-habit-show-habits-only-for-today t
+
+        org-habit-missed-glyph ?○)
+
+  (with-eval-after-load 'org-habit
+    (set-face-attribute 'org-habit-alert-face 'nil :background 'nil)
+    (set-face-attribute 'org-habit-alert-future-face 'nil :background 'nil)
+    (set-face-attribute 'org-habit-clear-face 'nil :background 'nil)
+    (set-face-attribute 'org-habit-clear-future-face 'nil :background 'nil)
+    (set-face-attribute 'org-habit-ready-face 'nil :background 'nil)
+    (set-face-attribute 'org-habit-ready-future-face 'nil :background 'nil)
+    (set-face-attribute 'org-habit-overdue-face 'nil :background 'nil))
 
   (setq org-agenda-category-icon-alist
         `(
@@ -497,7 +616,7 @@ With a prefix ARG, remove start location."
 ;; ------------------------------------------------------------
 (use-package projectile
   :ensure t
-  :hook (emacs-startup . projectile-mode)
+  :hook (after-init . projectile-mode)
   :config 
   (setq projectile-project-search-path '("/media/data/Web-Applications"))
   (define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map))
@@ -531,7 +650,7 @@ With a prefix ARG, remove start location."
   (setq neo-window-width 32)
   (defun neotree-set-font ()
     "Set font size of neotree"
-    (setq buffer-face-mode-face '(:family "Roboto" :height 100))
+    (setq buffer-face-mode-face '(:family "Roboto Condensed" :height 100))
     (buffer-face-mode)
     (visual-line-mode -1))
   (add-hook 'neotree-mode-hook #'neotree-set-font)
@@ -594,6 +713,8 @@ With a prefix ARG, remove start location."
   (setq minibuffer-prompt-properties
 	      '(read-only t cursor-intangible t face minibuffer-prompt))
   (add-hook 'minibuffer-setup-hook #'cursor-intangible-mode)
+  (setq completion-cycle-threshold 3)
+  (setq tab-always-indent 'complete)
 
   (setq read-extended-command-predicate #'command-completion-default-include-p)
   (setq enable-recursive-minibuffers t))
@@ -734,35 +855,68 @@ With a prefix ARG, remove start location."
 
 ;;   (global-set-key (kbd "<f1> v") #'helpful-variable)
 
-(use-package company
+;; (use-package company
+;;   :ensure t
+;;   :hook (prog-mode . company-mode)
+;;   :config
+;;   (setq company-idle-delay 0.3)
+;;   (setq company-minimum-prefix-length 1)
+;;   (setq company-backends
+;;         '((company-files          ; files & directory
+;;            company-keywords       ; keywords
+;;            company-capf)  ; completion-at-point-functions
+;;           (company-abbrev company-dabbrev)
+;;           )))
+
+;; (with-eval-after-load 'company
+;;   (define-key company-active-map (kbd "C-n") #'company-select-next)
+;;   (define-key company-active-map (kbd "C-p") #'company-select-previous)
+;;   (define-key company-active-map (kbd "SPC") #'company-abort))
+
+;; (use-package company-box
+;;   :ensure t
+;;   :after company
+;;   :hook (company-mode . company-box-mode))
+
+(use-package corfu
   :ensure t
-  :hook (prog-mode . company-mode)
+  ;; Optional customizations
+  :custom
+  (corfu-cycle t)                ;; Enable cycling for `corfu-next/previous'
+  (corfu-auto t)                 ;; Enable auto completion
+  (corfu-separator ?\s)          ;; Orderless field separator
+  (corfu-quit-at-boundary nil)   ;; Never quit at completion boundary
+  (corfu-quit-no-match nil)      ;; Never quit, even if there is no match
+  (corfu-preview-current nil)    ;; Disable current candidate preview
+  (corfu-preselect-first nil)    ;; Disable candidate preselection
+  (corfu-on-exact-match nil)     ;; Configure handling of exact matches
+  (corfu-echo-documentation nil) ;; Disable documentation in the echo area
+  (corfu-scroll-margin 5)        ;; Use scroll margin
+
+  :bind
+  (:map corfu-map
+        ("TAB" . corfu-next)
+        ([tab] . corfu-next)
+        ("S-TAB" . corfu-previous)
+        ([backtab] . corfu-previous))
+
+  :init
+  (global-corfu-mode))
+
+(use-package kind-icon
+  :ensure t
+  :after corfu
+  :custom
+  (kind-icon-default-face 'corfu-default) ; to compute blended backgrounds correctly
   :config
-  (setq company-idle-delay 0.3)
-  (setq company-minimum-prefix-length 1)
-  (setq company-backends
-        '((company-files          ; files & directory
-           company-keywords       ; keywords
-           company-capf)  ; completion-at-point-functions
-          (company-abbrev company-dabbrev)
-          )))
-
-(with-eval-after-load 'company
-  (define-key company-active-map (kbd "C-n") #'company-select-next)
-  (define-key company-active-map (kbd "C-p") #'company-select-previous)
-  (define-key company-active-map (kbd "SPC") #'company-abort))
-
-(use-package company-box
-  :ensure t
-  :after company
-  :hook (company-mode . company-box-mode))
+  (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
 
 (use-package writeroom-mode
   :ensure t
   :after org
   :config
   (setq writeroom-fullscreen-effect 'maximized)
-  (setq writeroom-width 120)
+  (setq writeroom-width 100)
   (setq writeroom-mode-line 't))
 
 
@@ -807,6 +961,10 @@ With a prefix ARG, remove start location."
 ;; ------------------------------------------------------------
 ;; PROG MODE
 ;; ------------------------------------------------------------
+(use-package vimish-fold
+  :ensure t
+  :hook (prog-mode . vimish-fold-mode))
+
 (use-package flycheck
   :ensure t
   :defer t
@@ -823,6 +981,9 @@ With a prefix ARG, remove start location."
   (add-hook 'prog-mode-hook (lambda ()
                               (unless (eq major-mode 'c++-mode)
                                 (aggressive-indent-mode)))))
+
+(use-package eldoc-cmake
+  :hook (cmake-mode . eldoc-cmake-enable))
 
 (use-package editorconfig
   :ensure t
@@ -882,7 +1043,7 @@ With a prefix ARG, remove start location."
 
 (use-package smartparens
   :ensure t
-  :hook (prog-mode . smartparens-mode)
+  :hook ((prog-mode org-mode) . smartparens-mode)
   :config
   (require 'smartparens-config))
 
@@ -916,14 +1077,38 @@ With a prefix ARG, remove start location."
   (define-key evil-normal-state-map (kbd "C-c <return>") 'evil-mc-undo-all-cursors)
   (global-set-key (kbd "C-S-<mouse-1>") 'evil-mc-toggle-cursor-on-click))
 
+(use-package python-mode
+  :ensure t
+  :bind (:map python-mode-map
+              ("C-<backspace>" . 'backward-kill-word)
+              ("C-j" . 'windmove-down)
+              ("C-c C-c" . 'recompile)
+              ("C-c C-l" . 'python-shell-send-file))
+  :custom
+  ;; NOTE: Set these if Python 3 is called "python3" on your system!
+  ;; (python-shell-interpreter "python3")
+  ;; (dap-python-executable "python3")
+  (dap-python-debugger 'debugpy)
+  :config
+  (require 'dap-python))
+
 (use-package pyvenv
   :ensure t
   :defer t
   :config
   (setq pyvenv-menu t)
   (add-hook 'pyvenv-post-activate-hooks (lambda ()
+                                          (message "VENV activated")
 					                                (pyvenv-restart-python)))
   :hook (python-mode . pyvenv-mode))
+
+(use-package treemacs
+  :ensure t
+  :after lsp)
+
+(use-package lsp-treemacs
+  :ensure t
+  :after lsp)
 
 (use-package lsp-pyright
   :ensure t
@@ -944,10 +1129,6 @@ With a prefix ARG, remove start location."
 (use-package csharp-mode
   :ensure t
   :after projectile)
-
-(use-package omnisharp
-  :ensure t
-  :hook (csharp-mode . omnisharp-mode))
 
 (use-package modern-cpp-font-lock
   :ensure t
@@ -992,8 +1173,8 @@ With a prefix ARG, remove start location."
   :ensure t
   :hook (rjsx-mode . #'prettier-js-mode)
   :config
-  (setq prettier-js-args '("--print-width" "120"
-			                     "--tab-width" "2")))
+  (setq prettier-js-args '("--print-width" "100"
+			                     "--tab-width" "4")))
 
 (use-package js2-mode
   :ensure t
@@ -1145,5 +1326,20 @@ With a prefix ARG, remove start location."
             (global-set-key (kbd "C-x g") 'magit-status)
 
             (custom-set-faces
-             '(evil=mc=region-face ((t (:inherit cursor)))))))
+             '(evil-mc-region-face ((t (:inherit cursor)))))))
 
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(magit-todos-keywords (list "TODO" "FIXME"))
+ '(package-selected-packages
+   '(afternoon-theme ample-theme olivetti vs-dark-theme eldoc-cmake vimish-fold zmq yasnippet-snippets wsd-mode writeroom-mode which-key web-mode vue-mode vterm vertico use-package undo-tree typescript-mode svg-tag-mode smartparens rjsx-mode ripgrep rainbow-delimiters pyvenv python-mode projectile prettier-js php-mode ox-twbs ox-reveal ox-gfm org-super-agenda org-roam-ui org-roam-bibtex org-ref org-present org-noter-pdftools org-modern org-download org-bullets orderless ob-restclient ob-mongo neotree navigel nano-theme mu4e-alert mood-line modern-cpp-font-lock mlscroll marginalia magit-todos lsp-pyright line-reminder json-navigator highlight-indent-guides helm-bibtex go-mode focus expand-region evil-mc evil-collection emmet-mode elisp-refs editorconfig doom-themes doom-modeline dired-posframe diminish dash-functional dap-mode consult company-box cmake-mode aggressive-indent add-node-modules-path)))
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(evil-mc-region-face ((t (:inherit cursor))))
+ '(org-modern-label ((t (:width normal)))))
