@@ -63,7 +63,7 @@
           ("/Gmail/[Gmail]/All Mail"  . ?a))))
 
 (use-package mu4e-alert
-  :ensure t
+  :straight t
   :hook (mu4e-mode . mu4e-alert-enable-mode-line-display)
   :config
   ;;(mu4e-alert-enable-mode-line-display)

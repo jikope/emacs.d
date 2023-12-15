@@ -1,0 +1,6 @@
+# -*- mode: snippet -*-
+# name: Org Init 
+# key: init
+# --
+#+TITLE: $0
+#+OPTIONS: toc:nil ^:nil 

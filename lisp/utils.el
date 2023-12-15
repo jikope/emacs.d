@@ -2,22 +2,26 @@
 ;; PROJECT MANAGEMENT 
 ;; ------------------------------------------------------------
 (use-package projectile
-  :ensure t
+  :straight t
   :hook (after-init . projectile-mode)
   :config 
   ;; (setq projectile-project-search-path '("/media/data/Web-Applications"))
   (define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map))
 
-(use-package ripgrep
-  :ensure t
-  :after projectile)
+;; (use-package ripgrep
+;;   :straight t
+;;   :after projectile)
 
 (use-package magit
-  :ensure t
+  :straight t
   :defer 10)
 
+(use-package forge
+  :straight t
+  :after magit)
+
 (use-package magit-todos
-  :ensure t
+  :straight t
   :after magit
   :hook (magit-mode . magit-todos-mode)
   :config
@@ -27,41 +31,70 @@
   (custom-set-variables
    '(magit-todos-keywords (list "TODO" "FIXME"))))
 
+(use-package docker
+  :straight t
+  :bind ("C-c d" . docker)
+  :after magit)
+
+(use-package command-log-mode
+  :straight t
+  :after magit)
+
 ;; TODO https://github.com/Artawower/blamer.el
-(use-package neotree
-  :ensure t
-  :after projectile
+(use-package blamer
+  :straight t
+  :after magit
+  :bind (("s-i" . blamer-show-commit-info)
+         ("C-c i" . blamer-show-posframe-commit-info))
+  :custom
+  (blamer-idle-time 0.3)
+  (blamer-min-offset 30)
+  :custom-face
+  (blamer-face ((t :foreground "#7a88cf"
+                    :background nil
+                    :height 140
+                    :italic t)))
   :config
-  (setq neo-theme (if (display-graphic-p) 'icons ))
-  (setq neo-smart-open t)
-  (setq neo-window-width 32)
-  (defun neotree-set-font ()
-    "Set font size of neotree"
-    (setq buffer-face-mode-face '(:family "Roboto Condensed" :height 100))
-    (buffer-face-mode)
-    (visual-line-mode -1))
-  (add-hook 'neotree-mode-hook #'neotree-set-font)
-  (define-key neotree-mode-map (kbd "<tab>") 'neotree-enter)
-  (define-key neotree-mode-map (kbd "C-c t h") 'neotree-hidden-file-toggle))
+  (blamer-mode 1))
+
+;; (use-package neotree
+;;   :straight t
+;;   :after projectile
+;;   :config
+;;   (setq neo-theme (if (display-graphic-p) 'icons ))
+;;   (setq neo-smart-open t)
+;;   (setq neo-window-width 32)
+;;   (defun neotree-set-font ()
+;;     "Set font size of neotree"
+;;     (setq buffer-face-mode-face '(:family "Roboto Condensed" :height 100))
+;;     (buffer-face-mode)
+;;     (visual-line-mode -1))
+;;   (add-hook 'neotree-mode-hook #'neotree-set-font)
+;;   (define-key neotree-mode-map (kbd "<tab>") 'neotree-enter)
+;;   (define-key neotree-mode-map (kbd "C-c t h") 'neotree-hidden-file-toggle))
 
 ;; ------------------------------------------------------------
 ;; COMPLETION SYSTEM 
 ;; ------------------------------------------------------------
 (use-package vertico
-  :ensure t
+  :straight t
   :hook (after-init . vertico-mode)
   :config
   (define-key vertico-map (kbd "C-j") #'vertico-insert)
   (define-key vertico-map (kbd "C-l") #'backward-kill-word)
   (global-set-key (kbd "C-;") 'execute-extended-command)
   ;; grow and shrink the vertico minibuffer
+
+  (setq read-file-name-completion-ignore-case t
+        read-buffer-completion-ignore-case t
+        completion-ignore-case t)
   (setq vertico-resize t)
 
   ;; optionally enable cycling for `vertico-next' and `vertico-previous'.
   (setq vertico-cycle t))
 
 (use-package orderless
-  :ensure t
+  :straight t
   :after vertico
   :config
   (setq completion-styles '(orderless)
@@ -84,7 +117,7 @@
   (setq enable-recursive-minibuffers t))
 
 (use-package marginalia
-  :ensure t
+  :straight t
   :after vertico
   :hook (vertico-mode . marginalia-mode)
   :bind (("M-A" . marginalia-cycle)
@@ -92,7 +125,7 @@
 	       ("M-A" . marginalia-cycle)))
 
 (use-package consult
-  :ensure t
+  :straight t
   :after vertico
   :bind (;; C-c bindings (mode-specific-map)
 	       ("C-x f" . consult-recent-file)
@@ -101,11 +134,11 @@
 	       ("C-s" . consult-line))
   :hook (completion-list-mode . consult-preview-at-point-mode)
   :init
-  (recentf-mode)
+  ;(recentf-mode)
   (setq register-preview-delay 0
 	      register-preview-function #'consult-register-format)
   (advice-add #'register-preview :override #'consult-register-window)
-  (advice-add #'completing-read-multiple :override #'consult-completing-read-multiple)
+  ;(advice-add #'completing-read-multiple :override #'consult-completing-read-multiple)
   (setq xref-show-xrefs-function #'consult-xref
 	      xref-show-definitions-function #'consult-xref)
 
@@ -128,39 +161,73 @@
 ;; ------------------------------------------------------------
 ;; EMACS UTILITIES 
 ;; ------------------------------------------------------------
+(use-package all-the-icons
+  :straight t)
+
 (use-package which-key
-  :ensure t
+  :straight t
   :hook (after-init . which-key-mode)
   :config
   (define-key which-key-mode-map (kbd "<escape>") 'keyboard-escape-quit))
 
-(use-package corfu
-  :ensure t
-  :after vertico
-  :hook ((prog-mode org-mode) . corfu-mode)
+(use-package company
+  :straight t
+  :after projectile
   :custom
-  (corfu-cycle t)                ;; Enable cycling for `corfu-next/previous'
-  (corfu-auto t)                 ;; Enable auto completion
-  (corfu-separator ?\s)          ;; Orderless field separator
-  (corfu-quit-at-boundary nil)   ;; Never quit at completion boundary
-  (corfu-quit-no-match nil)      ;; Never quit, even if there is no match
-  (corfu-preview-current nil)    ;; Disable current candidate preview
-  (corfu-preselect-first nil)    ;; Disable candidate preselection
-  (corfu-on-exact-match nil)     ;; Configure handling of exact matches
-  (corfu-echo-documentation nil) ;; Disable documentation in the echo area
-  (corfu-scroll-margin 5)        ;; Use scroll margin
-
-  :bind
-  (:map corfu-map
-        ("TAB" . corfu-next)
-        ([tab] . corfu-next)
-        ("S-TAB" . corfu-previous)
-        ([backtab] . corfu-previous)))
-
-(use-package kind-icon
-  :ensure t
-  :after corfu
-  :custom
-  (kind-icon-default-face 'corfu-default) ; to compute blended backgrounds correctly
+  (company-idle-delay 0.3)
+  (company-minimum-prefix-length 1)
+  (company-tooltip-align-annotations nil)
+  (company-preview-overlay nil)
+  (company-backends
+   '((company-files          ; files & directory
+      company-keywords       ; keywords
+      company-capf)  ; completion-at-point-functions
+     (company-abbrev company-dabbrev)
+     ))
+  :hook
+  ((prog-mode lisp-interaction-mode) . company-mode)
   :config
-  (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
+  (set-face-attribute 'company-tooltip-selection 'nil :background "#26253c" :foreground "#f0f0f0"))
+
+(use-package company-box
+  :ensure t
+  :after company
+  :hook (company-mode . company-box-mode)
+  )
+
+;; (use-package corfu
+;;   :straight t
+;;   :after projectile
+;;   :hook ((prog-mode org-mode) . corfu-mode)
+;;   :custom
+;;   (corfu-cycle t)                ;; Enable cycling for `corfu-next/previous'
+;;   (corfu-auto t)                 ;; Enable auto completion
+;;   (corfu-separator ?\s)          ;; Orderless field separator
+;;   (corfu-quit-at-boundary nil)   ;; Never quit at completion boundary
+;;   (corfu-quit-no-match nil)      ;; Never quit, even if there is no match
+;;   (corfu-preview-current nil)    ;; Disable current candidate preview
+;;   (corfu-preselect-first nil)    ;; Disable candidate preselection
+;;   (corfu-on-exact-match nil)     ;; Configure handling of exact matches
+;;   (corfu-echo-documentation nil) ;; Disable documentation in the echo area
+;;   (corfu-scroll-margin 5)        ;; Use scroll margin
+
+;;   :bind
+;;   (:map corfu-map
+;;         ("C-n" . corfu-next)
+;;         ([tab] . corfu-next)
+;;         ("C-p" . corfu-previous)
+;;         ([backtab] . corfu-previous))
+;;   :config
+;;   (advice-add 'corfu--setup :after 'evil-normalize-keymaps)
+;;   (advice-add 'corfu--teardown :after 'evil-normalize-keymaps)
+;;   (evil-make-overriding-map corfu-map))
+
+(use-package helpful 
+  :straight t
+  :after projectile
+  :config
+  (global-set-key (kbd "<f1> f") #'helpful-callable)
+
+  (global-set-key (kbd "<f1> v") #'helpful-variable)
+  (global-set-key (kbd "<f1> k") #'helpful-key))
+

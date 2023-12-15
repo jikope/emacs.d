@@ -1,0 +1,7 @@
+# -*- mode: snippet -*-
+# name: bibtex src
+# key: srcbib
+# --
+#+begin_src bibtex
+  $0
+#+end_src

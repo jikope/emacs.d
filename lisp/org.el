@@ -1,32 +1,71 @@
 ;; ------------------------------------------------------------
 ;; ORG UI
 ;; ------------------------------------------------------------
-;; (setq header-line-format " ")
 (setq org-startup-indented t
-      org-image-actual-width nil
+      org-image-actual-width '(500)
       org-startup-folded t
       org-pretty-entities t 
-      org-hide-emphasis-markers t ; Hide italic, bold ,etc
+      org-hide-emphasis-markers nil ; Hide italic, bold ,etc
       org-agenda-block-separator ""
       org-ellipsis " ▾"
       org-src-preserve-indentation t)
 
-(dolist (face '((org-level-1 . 1.3)
-                (org-level-2 . 1.2)
+(setq org-export-headline-levels 6
+      org-list-allow-alphabetical 't)
+;; (use-package org-modern
+;;   :straight t)
+
+(use-package org-modern
+  :straight (org-modern :type git :host github :repo "minad/org-modern"
+                        :fork (:host github
+                                     :repo "BlankSpruce/org-modern")))
+
+(setq org-modern-todo nil
+      org-modern-tag nil
+      org-modern-timestamp nil
+      org-modern-statistics nil
+      org-modern-checkbox nil
+      org-modern-table nil
+      org-modern-hide-stars 'leading
+      ;; org-modern-keyword nil
+      org-modern-priority nil)
+
+(dolist (face '((org-level-1 . 1.25)
+                (org-level-2 . 1.15)
                 (org-level-3 . 1.1)
-                (org-level-4 . 1.0)
+                (org-level-4 . 1.1)
                 (org-level-5 . 1.1)
                 (org-level-6 . 1.1)
                 (org-level-7 . 1.1)
                 (org-level-8 . 1.1)))
   (set-face-attribute (car face) nil :weight 'regular :height (cdr face)))
-;; (set-face-attribute 'org-level-1 'nil :height 125)
-;; (set-face-attribute 'org-level-2 'nil :height 115)
-;; (set-face-attribute 'org-todo 'nil :weight 'light :box 'nil)
+
+(set-face-attribute 'org-todo 'nil :weight 'light :box 'nil :foreground "#ff6f00")
+
+(set-face-attribute 'org-code 'nil :inherit 'fixed-pitch)
+(set-face-attribute 'org-block 'nil :inherit 'fixed-pitch)
 (set-face-attribute 'org-ellipsis 'nil :underline nil)
-(set-face-attribute 'org-date 'nil :underline nil)
+(set-face-attribute 'org-date 'nil :inherit 'org-macro :underline nil)
+;; (set-face-attribute 'org-table 'nil :inherit 'fixed-pitch)
+(set-face-attribute 'org-table nil :inherit 'modus-themes-fg-magenta-cooler :foreground 'nil :weight 'regular)
+(set-face-attribute 'org-modern-done 'nil :background nil)
+(set-face-attribute 'org-modern-todo 'nil :background nil :foreground nil)
+(set-face-attribute 'org-checkbox-statistics-done 'nil :background nil)
 
 (add-hook 'org-mode-hook 'visual-line-mode)
+;;(add-hook 'org-mode-hook #'org-modern-mode)
+;; (add-hook 'org-agenda-finalize-hook #'org-modern-agenda)
+;(add-hook 'org-agenda-finalize-hook #'org-agenda-log-mode)
+
+;; SVG tags, progress bars & icons
+(use-package svg-lib
+  :straight t)
+;;  ;'(svg-lib :type git :host github :repo "rougier/svg-lib"))
+
+;; ;; Replace keywords with SVG tags
+(use-package svg-tag-mode
+  :straight (svg-tag-mode :type git :host github :repo "rougier/svg-tag-mode"))
+ ;'(svg-tag-mode :type git :host github :repo "rougier/svg-tag-mode"))
 
 (defconst date-re "[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}")
 (defconst time-re "[0-9]\\{2\\}:[0-9]\\{2\\}")
@@ -36,92 +75,260 @@
 (defun svg-progress-percent (value)
   (svg-image (svg-lib-concat
               (svg-lib-progress-bar (/ (string-to-number value) 100.0)
-                                    nil :margin 0 :stroke 2 :radius 3 :padding 2 :width 11)
+                                    nil :margin 0 :stroke 2 )
               (svg-lib-tag (concat value "%")
-                           nil :stroke 0 :margin 0)) :ascent 'center))
+                           nil :stroke 0 :margin 0 :font-size jikope/svg-tag-size :height jikope/svg-tag-height)) :ascent 'center))
 
 (defun svg-progress-count (value)
   (let* ((seq (mapcar #'string-to-number (split-string value "/")))
          (count (float (car seq)))
          (total (float (cadr seq))))
-    (svg-image (svg-lib-concat
-                (svg-lib-progress-bar (/ count total) nil
-                                      :margin 0 :stroke 2 :radius 3 :padding 2 :width 11)
-                (svg-lib-tag value nil
-                             :stroke 0 :margin 0)) :ascent 'center)))
+  (svg-image (svg-lib-concat
+              (svg-lib-progress-bar (/ count total) nil
+                                    :margin 0 :stroke 2 )
+              (svg-lib-tag value nil
+                           :font-size 11 :stroke 0 :margin 0)) :ascent 'center)))
 
 (setq svg-tag-tags
       `(
         ;; Org tags
-        ;; (":\\([A-Za-z0-9]+\\)" . ((lambda (tag) (svg-tag-make tag))))
+        ;; (":\\([A-Za-z0-9]+\\)" . ((lambda (tag) (svg-tag-make tag :face 'org-level-1))))
         ;; (":\\([A-Za-z0-9]+[ \-]\\)" . ((lambda (tag) tag)))
+        ("\\(:#[A-Za-z0-9]+\\)" . ((lambda (tag)
+                                     (svg-tag-make tag :beg 2))))
+        ("\\(:#[A-Za-z0-9]+:\\)$" . ((lambda (tag)
+                                       (svg-tag-make tag :beg 2 :end -1))))
         
         ;; Task priority
         ("\\[#[A-Z]\\]" . ( (lambda (tag)
                               (svg-tag-make tag :face 'org-priority 
                                             :beg 2 :end -1 :margin 0))))
 
-        ;; Progress
-        ("\\(\\[[0-9]\\{1,3\\}%\\]\\)" . ((lambda (tag)
-                                            (svg-progress-percent (substring tag 1 -2)))))
-        ("\\(\\[[0-9]+/[0-9]+\\]\\)" . ((lambda (tag)
-                                          (svg-progress-count (substring tag 1 -1)))))
+        ;; ;; Progress
+        ;; ("\\(\\[[0-9]\\{1,3\\}%\\]\\)" . ((lambda (tag)
+        ;;                                     (svg-progress-percent (substring tag 1 -2)))))
+        ;; ("\\(\\[[0-9]+/[0-9]+\\]\\)" . ((lambda (tag)
+        ;;                                   (svg-progress-count (substring tag 1 -1)))))
         
         ;; TODO / DONE
-        ("TODO" . ((lambda (tag) (svg-tag-make "TODO" :face 'org-todo :inverse t :margin 0))))
-        ("DONE" . ((lambda (tag) (svg-tag-make "DONE" :face 'org-done :margin 0))))
+        ("* \\(TODO\\)" . ((lambda (tag) (svg-tag-make "TODO" :face 'error :inverse nil :margin 0 :height jikope/svg-tag-height))))
+        ("* \\(DONE\\)" . ((lambda (tag) (svg-tag-make "DONE" :face 'org-done :margin 0 :height jikope/svg-tag-height))))
 
+        ;; ORG options
+        ("#+TITLE:" . ((lambda (tag) (svg-tag-make "ASD" :face dired-rainbow-shell-face :height jikope/svg-tag-height))))
 
         ;; Citation of the form [cite:@Knuth:1984] 
-        ("\\(\\[cite:@[A-Za-z]+:\\)" . ((lambda (tag)
+        ("\\(\\[cite:&[A-Za-z]+:\\)" . ((lambda (tag)
                                           (svg-tag-make tag
                                                         :inverse t
                                                         :beg 7 :end -1
                                                         :crop-right t))))
-        ("\\[cite:@[A-Za-z]+:\\([0-9]+\\]\\)" . ((lambda (tag)
+        ("\\[cite:&[A-Za-z]+:\\([0-9]+\\]\\)" . ((lambda (tag)
                                                    (svg-tag-make tag
                                                                  :end -1
-                                                                 :crop-left t))))
+                                                                 :crop-left t
+                                                                 :height jikope/svg-tag-height))))
 
+        ;; [C-x] [C-f]
+        ("||[0-9a-zA-Z- ]+?||" . ((lambda (tag)
+                                  (svg-tag-make tag :face 'font-lock-comment-face
+                                                :margin 0 :beg 2 :end -2 :height jikope/svg-tag-height))))
         
         ;; Active date (with or without day name, with or without time)
         (,(format "\\(<%s>\\)" date-re) .
          ((lambda (tag)
-            (svg-tag-make tag :beg 1 :end -1 :margin 0))))
+            (svg-tag-make tag :beg 1 :end -1 :margin 0 :face 'org-date :height jikope/svg-tag-height))))
         (,(format "\\(<%s \\)%s>" date-re day-time-re) .
          ((lambda (tag)
-            (svg-tag-make tag :beg 1 :inverse nil :crop-right t :margin 0))))
+            (svg-tag-make tag :beg 1 :inverse nil :crop-right t :margin 0 :face 'org-date :height jikope/svg-tag-height))))
         (,(format "<%s \\(%s>\\)" date-re day-time-re) .
          ((lambda (tag)
-            (svg-tag-make tag :end -1 :inverse t :crop-left t :margin 0))))
+            (svg-tag-make tag :end -1 :inverse t :crop-left t :margin 0 :face 'org-date :height jikope/svg-tag-height))))
 
         ;; Inactive date  (with or without day name, with or without time)
         (,(format "\\(\\[%s\\]\\)" date-re) .
          ((lambda (tag)
-            (svg-tag-make tag :beg 1 :end -1 :margin 0 :face 'org-date))))
+            (svg-tag-make tag :beg 1 :end -1 :margin 0 :face 'org-date :height jikope/svg-tag-height))))
         (,(format "\\(\\[%s \\)%s\\]" date-re day-time-re) .
          ((lambda (tag)
-            (svg-tag-make tag :beg 1 :inverse nil :crop-right t :margin 0 :face 'org-date))))
+            (svg-tag-make tag :beg 1 :inverse nil :crop-right t :margin 0 :face 'org-date :height jikope/svg-tag-height))))
         (,(format "\\[%s \\(%s\\]\\)" date-re day-time-re) .
          ((lambda (tag)
-            (svg-tag-make tag :end -1 :inverse t :crop-left t :margin 0 :face 'org-date))))))
+            (svg-tag-make tag :end -1 :inverse t :crop-left t :margin 0 :face 'org-date :height jikope/svg-tag-height))))))
 
-(setq org-modern-todo nil
-      org-modern-tag nil
-      org-modern-timestamp nil)
+(use-package org-modern-indent
+  :straight nil
+  :load-path "~/.emacs.d/plugins/org-modern-indent")
 
-;;(add-hook 'org-mode-hook #'org-modern-mode)
-(add-hook 'org-agenda-finalize-hook #'org-modern-agenda)
+(use-package imenu-list
+  :straight t
+  :custom (imenu-list-position 'left))
 
-(defun bima/org-set-font ()
-  (org-modern-mode)
+(use-package exiftool
+  :straight t)
+
+(use-package org-imenu
+  :straight nil
+  :after org
+  :load-path "~/.emacs.d/plugins/org-imenu"
+  :config
+  (setq org-imenu-depth 2))
+
+;; (use-package sideframe
+;;   :load-path "~/.emacs.d/plugins/sideframe")
+
+;; (use-package pdf-drop-mode
+;;   :load-path "~/.emacs.d/plugins/pdf-drop-mode")
+
+;; Rougier Org bib mode 
+;; https://github.com/rougier/org-bib-mode
+(use-package org-imenu
+ :straight (org-imenu :type git :host github :repo "rougier/org-imenu"))
+
+;; (use-package book-mode
+;;   :straight nil
+;;   :load-path "~/.emacs.d/plugins/book-mode"
+;;   :custom
+;;   book-mode-top-margin 0
+;;   book-mode-bottom-margin 0
+;;   book-mode-left-margin 8)
+
+(use-package pdf-drop-mode
+ :straight (pdf-drop-mode :type git :host github :repo "rougier/pdf-drop-mode"))
+
+;(use-package citeproc
+;  :straight t
+;  :after org)
+
+(use-package org-bib
+  :straight (org-bib :type git :host github :repo "rougier/org-bib-mode"))
+  ;:load-path "~/.emacs.d/plugins/org-bib-mode"
+  ;; :custom
+  ;; (org-bib-library-path "/home/jikope/Uni/Riset/")
+  ;; (org-bib-library-file "/home/jikope/Uni/Riset/papers.org"))
+
+(defun jikope/toggle-transparent ()
+  (interactive)
+  (if (get 'jikope/transparent-state 'state)
+      (progn
+	    (set-frame-parameter (selected-frame) 'alpha '(100 . 100))
+	    (add-to-list 'default-frame-alist '(alpha . '(100 . 100)))
+	    (put 'jikope/transparent-state 'state nil))
+    (progn
+      (set-frame-parameter (selected-frame) 'alpha '(85 . 100))
+      (add-to-list 'default-frame-alist '(alpha . '(90 . 100)))
+      (put 'jikope/transparent-state 'state t))))
+
+
+(defun bima/org-left-margin()
+  (add-to-list 'font-lock-extra-managed-props 'display)
+  (setq left-margin 5)
+  (setq left-margin-width left-margin)
+  (set-window-margins (selected-window) left-margin 0)
+  (let ((margin-format (format "%%%ds" left-margin-width)))
+    (font-lock-add-keywords nil
+       `(
+         ("^#\\+begin_abstract.*?\\(\n\\)"
+          1 '(face nil display " "))
+         
+         ("^\\(#\\+begin_abstract.*$\\)"
+          1 '(face nano-default display (,(concat
+          (propertize "Abstract."
+                   'face '(:inherit nano-strong)))
+               append)))
+         
+         ("\\(\n#\\+end_abstract.*\\)$"
+          1 '(face nano-default display (,(concat
+          (propertize " —"
+                   'face '(:inherit nano-strong)))
+          append)))
+
+         ("^#\\+begin_keywords.*?\\(\n\\)"
+          1 '(face nil display " "))
+         
+         ("^\\(#\\+begin_keywords.*$\\)"
+          1 '(face nano-default display (,(concat
+          (propertize "Keywords:"
+                   'face '(:inherit nano-strong)))
+               append)))
+         
+         ("\\(\n#\\+end_keywords.*\\)$"
+          1 '(face nano-default display (,(concat
+          (propertize " —"
+                   'face '(:inherit nano-strong)))
+          append)))
+
+         ("^\\(\\- \\)\\(.*\\)$"
+          1 '(face nano-default display ((margin left-margin)
+                                         ,(propertize (format margin-format "• ")
+                                                      'face '(:inherit nano-default :weight light)) append)))
+
+         ("^\\(\\*\\{1\\} \\)\\(.*\\)$"
+          1 '(face nano-faded display ((margin left-margin)
+                                       ,(propertize (format margin-format "# ")
+                                                    'face '(:inherit nano-faded :weight light)) append))
+          2 '(face bold append))
+
+         ("^\\(\\*\\{2\\} \\)\\(.*\\)$"
+          1 '(face nano-faded display ((margin left-margin)
+                                       ,(propertize (format margin-format "## ")
+                                                    'face '(:inherit nano-faded :weight light)) append))
+          2 '(face bold append))
+
+         ("^\\(\\*\\{3\\} \\)\\(.*\\)$"
+          1 '(face nano-faded display ((margin left-margin)
+                                       ,(propertize (format margin-format "### ")
+                                                    'face '(:inherit nano-faded :weight light)) append))
+          2 '(face bold append))
+
+         ("^\\*\\{4\\} .*?\\(\n\\)"
+          1 '(face nil display " - "))
+
+         ("^\\(\\*\\{4\\} \\)\\(.*?\\)$"
+          1 '(face nano-faded display ((margin left-margin)
+                                       ,(propertize (format margin-format "§ ")
+                                                    'face '(:inherit nano-faded :weight light))  append))
+          2 '(face bold append)))))
+
+  (font-lock-fontify-buffer)
+  ;; (visual-line-mode)
+  )
+
+(defun bima/setup-writing-environment ()
+  "Setup a nice writing environment."
+  (interactive)
+  (setq-local line-spacing 5)
+  (setq org-modern-hide-stars 't
+        org-imenu-depth 3)
   (custom-set-faces '(org-modern-label ((t (:width normal)))))
-  (variable-pitch-mode)) 
+  ;; (setq-local header-line-format " ")
+  ;; (custom-set-faces '(header-line ((t (:height 200 :foreground nil :background nil)))))
+  (org-mode)
+  (org-imenu)
+  (variable-pitch-mode)
+  (bima/org-left-margin)
+  (org-indent-mode -1)
+  ;; (book-mode)
+  (org-modern-mode)
+  (setq org-modern-hide-stars 'leading
+        org-imenu-depth 2)
+  (svg-tag-mode)) 
 
-(add-hook 'org-mode-hook 'bima/org-set-font)
+(defun bima/default-org-hook ()
+  "Default hook for org-mode"
+  (setq-local line-spacing 0)
+  ;; (custom-set-faces '(org-modern-label ((t (:width normal)))))
+  (variable-pitch-mode)
+  ;; (org-indent-mode -1)
+  (org-modern-mode)
+  (svg-tag-mode))
+
+(add-hook 'org-mode-hook 'bima/default-org-hook)
+;; (add-hook 'org-mode-hook #'org-modern-indent-mode 90)
+(set-face-attribute 'fixed-pitch nil :height 1.0)
 
 (defun bima/next-subtree-narrow ()
-  "Move screen to next subtree and narrow it"
+  "Move screen to next subtree and narrow it."
   (interactive)
   (widen)
   (org-forward-heading-same-level 1)
@@ -160,7 +367,7 @@
 ;; ORG BABEL
 ;; ------------------------------------------------------------
 (defun my-org-confirm-babel-evaluate (lang)
-  (not (member lang '("sh" "python" "sql" "js" "latex"))))
+  (not (member lang '("sh" "python" "sqlite" "sql" "js" "latex"))))
 
 (setq org-confirm-babel-evaluate 'nil)
 
@@ -168,17 +375,21 @@
 (defvar org-babel-js-function-wrapper "console.log(JSON.stringify(require('util').inspect(function(){\n%s\n}())));")
 
 ;; (use-package ob-ipython
-;;   :ensure t)
+;;   :straight t)
 
 (use-package ob-restclient
-  :ensure t)
+  :straight t)
 
 (use-package ob-mongo
-  :ensure t)
+  :straight t)
 
+;; (org-babel-do-load-languages
+;;  'org-babel-load-languages
+;;  '((python . t) (restclient . t) (shell . t) (sql . t) (js . t) (latex . t) (mongo . t)))
 (org-babel-do-load-languages
  'org-babel-load-languages
- '((python . t) (restclient . t) (shell . t) (sql . t) (js . t) (latex . t) (mongo . t)))
+ '((python . t) (js . t) (latex . t) (sqlite . t)))
+
 
 (add-to-list 'org-babel-tangle-lang-exts '("js" . "js"))
 
@@ -188,7 +399,7 @@
 
 (use-package org-super-agenda
   :after org-agenda
-  :ensure t
+  :straight t
   :hook (org-agenda-mode . org-super-agenda-mode))
 
 (setq org-agenda-custom-commands
@@ -198,16 +409,20 @@
                       (org-super-agenda-groups
                        '((:name "Dinten Puniki"
                                 :time-grid t
-                                :todo "TODAY")
+                                :todo "TODAY"
+                                :todo "DONE")
                          (:name "Today but free hour"
                                 :and (:scheduled today :not (:time-grid t)))
+                         (:name "Done Today"
+                                :todo "DONE")
                          (:discard (:anything))))))
           (todo "" ((org-agenda-overriding-header "")
                     (org-super-agenda-groups
-                     '((:name "Projects"
-                              :file-path "projects"
-                              :and (:todo "TODO" :tag "ACTIVE" :tag "Coding")
-                              :discard (:todo "PROJECT" :habit t))
+                     '(
+                       ;; (:name "Projects"
+                       ;;        :file-path "projects"
+                       ;;        :and (:todo "TODO" :tag "ACTIVE" :tag "Coding")
+                       ;;        :discard (:todo "PROJECT" :habit ))
                        (:name "Overdue"
                               :scheduled past
                               :deadline past)
@@ -217,7 +432,8 @@
 (setq org-log-reschedule 'time)
 (setq org-log-into-drawer t)
 (setq org-directory "~/Roam")
-(setq org-agenda-skip-scheduled-if-done nil
+(setq org-agenda-start-with-log-mode t
+      org-agenda-skip-scheduled-if-done nil
       org-agenda-skip-deadline-if-done t
       org-agenda-time-leading-zero nil
       org-agenda-compact-blocks t
@@ -227,7 +443,7 @@
       org-agenda-scheduled-leaders '("" "")
 
       org-agenda-time-grid (quote ((today require-timed remove-match) () "      " "┈┈┈┈┈┈┈┈┈┈┈┈┈"))
-      org-agenda-prefix-format "   %i %?-8:c %?-2t% s")
+      org-agenda-prefix-format "   %i %?-8:c    %?-2t% s")
 
 ;; ORG HABIT
 (setq org-habit-today-glyph ?◌
@@ -261,10 +477,12 @@
 
 (setq org-agenda-files '("~/agenda/life.org" "~/agenda/manga.org" "~/agenda/projects.org"))
 (setq org-todo-keywords
-      '((sequence "TODO(t)" "NEXT(n)" "PROJECT(p)" "WAITING(w)" "MAYBE(m)" "|" "DONE(d)" "COMPLETED(c)" "CANCELLED(l)")))
+      '((sequence "TODO(t)" "NEXT(n)" "PROJECT(p)" "|" "DONE(d)" "COMPLETED(c)" "CANCELLED(l)")))
+;;'((sequence "TODO(t)" "NEXT(n)" "PROJECT(p)" "WAITING(w)" "MAYBE(m)" "|" "DONE(d)" "COMPLETED(c)" "CANCELLED(l)")))
 (setq org-tag-alist '(
                       ("Learn". ?l) ("ACTIVE" . ?a) ("Project".?p) ("Other") ("Daily") ("Book". ?b) ("Class" . ?c)))
 (add-hook 'org-agenda-mode-hook #'evil-mode)
+;(add-hook 'org-agenda-mode-hook 'org-agenda-log-mode)
 
 ;; ------------------------------------------------------------
 ;; LATEX OPTIONS
@@ -282,25 +500,31 @@
         ("normalem" "ulem" t nil)
         ("" "amsmath" t nil)
         ("" "amssymb" t nil)
+        ("" "tabularx" t nil)
         ("" "capt-of" nil nil)
-        ("colorlink=true,linkcolor=black,citecolor=blue" "hyperref" t nil)))
+        ("colorlinks=true,linkcolor=black,citecolor=blue" "hyperref" t nil)))
 
-(setq org-latex-listings 'minted)
+(setq org-latex-listings 'minted
+      org-latex-prefer-user-labels 't)
 (setq org-latex-pdf-process '(
-			                        "latexmk -shell-escape -interaction=nonstopmode -bibtex  -pdflatex=%latex -pdf -quiet -f %f"
-			                        "latexmk -shell-escape -interaction=nonstopmode -bibtex  -pdflatex=%latex -pdf -quiet -f %f"
-			                        ;; "pdflatex -shell-escape -interaction nonstopmode -output-directory %o %f"
-			                        ;; "bibtex %b"
-			                        ;; "pdflatex -shell-escape -interaction nonstopmode -output-directory %o %f"
-			                        ))
+                              ;; "xelatex -interaction nonstopmode %f"
+                              ;; "xelatex -interaction nonstopmode %f"
+			                  "latexmk -shell-escape -interaction=nonstopmode -bibtex  -pdflatex=%latex -pdf -f %f"
+                              "bibtex %b"
+			                  "latexmk -shell-escape -interaction=nonstopmode -bibtex  -pdflatex=%latex -pdf -g -f %f"
+			                  ;; "pdflatex -shell-escape -interaction nonstopmode -output-directory %o %f"
+			                  ;; "bibtex %b"
+			                  ;; "pdflatex -shell-escape -interaction nonstopmode -output-directory %o %f"
+			                  ))
+
 
 ;; Sample minted options.
 (setq org-latex-minted-options '(
-				                         ("frame" "single")
-				                         ("breaklines" "true")
-				                         ("breakanywhere" "true")
-				                         ("xleftmargin" "\\parindent")
-				                         ))
+				                 ("frame" "single")
+				                 ("breaklines" "true")
+				                 ("breakanywhere" "true")
+				                 ("xleftmargin" "\\parindent")
+				                 ))
 
 (setq org-refile-targets
       '((org-agenda-files :maxlevel . 5)))
@@ -310,7 +534,7 @@
 (advice-add 'org-refile :after 'org-save-all-org-buffers)
 
 (use-package org-roam
-  :ensure t
+  :straight t
   :defer t
   :custom
   (org-roam-directory (file-truename "~/Roam/"))
@@ -333,30 +557,36 @@
   ;; If using org-roam-protocol
   (require 'org-roam-protocol))
 
-(use-package org-roam-bibtex
-  :ensure t
-  :after (org-roam helm-bibtex)
-  :bind (:map org-mode-map ("C-c n b" . orb-note-actions))
-  :config
-  (require 'org-ref)
-  (org-roam-bibtex-mode))
+;; (use-package org-roam-bibtex
+;;   :straight t
+;;   :after (org-roam helm-bibtex)
+;;   :bind (:map org-mode-map ("C-c n b" . orb-note-actions))
+;;   :config
+;;   (require 'org-ref)
+;;   (org-roam-bibtex-mode))
 
 (setq org-capture-templates '(
-                              ("t" "Task" entry
-                               (file+headline "~/agenda/life.org" "Inbox")
-                               "* TODO %?\n:PROPERTIES:\n:CREATED:%U\n:END:\n\n"
+                              ("i" "Inbox" entry
+                               (file "~/agenda/inbox.org")
+                               "* TODO %?\n(Entered on %U)\n"
                                :empty-lines 1)
                               ("m" "Manga" entry
-                               (file+headline "~/agenda/Manga.org" "Inbox")
-                               "* READ %?")
-                              ))
+                               (file+headline "~/agenda/manga.org" "Inbox")
+                               "* READ %?")))
+
+(defun org-capture-inbox ()
+  "Get current file link and create inbox capture"
+  (interactive)
+  (call-interactively 'org-store-link)
+  (org-capture nil "i"))
 
 (use-package org-download
   :ensure t
+  :straight t
   :after org)
 
 (use-package org-ref
-  :ensure t
+  :straight t
   :after org
   :config
   (setq biblio-bibtex-use-autokey t
@@ -373,8 +603,8 @@
           (incollection  . "${=has-pdf=:1}${=has-note=:1} ${year:4} ${author:36} ${title:*} ${booktitle:40}")
           (inproceedings . "${=has-pdf=:1}${=has-note=:1} ${year:4} ${author:36} ${title:*} ${booktitle:40}")
           (t             . "${=has-pdf=:1}${=has-note=:1} ${year:4} ${author:36} ${title:*}"))
-	      bibtex-completion-pdf-open-function
-	      (lambda (fpath)
+	    bibtex-completion-pdf-open-function
+	    (lambda (fpath)
           (call-process "open" nil 0 nil fpath)))
 
   (require 'bibtex)
@@ -399,20 +629,20 @@
 
   (define-key bibtex-mode-map (kbd "C-c b") 'org-ref-bibtex-hydra/body))
 
-(use-package helm-bibtex
-  :ensure t
-  :after org-roam
-  :config
-  (setq bibtex-completion-bibliography bib-files-directory
-        bibtex-completion-library-path pdf-files-directory
-        bibtex-completion-pdf-field "File"
-        bibtex-completion-notes-path org-directory
-        bibtex-completion-additional-search-fields '(keywords))
-  :bind
-  (("C-c n B" . helm-bibtex)))
+;; (use-package helm-bibtex
+;;   :straight t
+;;   :after org-roam
+;;   :config
+;;   (setq bibtex-completion-bibliography bib-files-directory
+;;         bibtex-completion-library-path pdf-files-directory
+;;         bibtex-completion-pdf-field "File"
+;;         bibtex-completion-notes-path org-directory
+;;         bibtex-completion-additional-search-fields '(keywords))
+;;   :bind
+;;   (("C-c n B" . helm-bibtex)))
 
 (use-package org-noter
-  :ensure t
+  :straight t
   :after org-roam
   :config
   (setq org-noter-notes-search-path "~/Uni/bib/pdf"))
@@ -422,16 +652,16 @@
 ;;   :after pdf-tools)
 
 (use-package org-pdftools
-  :ensure t
+  :straight t
   :hook (org-mode . org-pdftools-setup-link))
 
 (use-package org-noter-pdftools
-  :ensure t
+  :straight t
   :after org-noter
   :config
   (setq  org-noter-pdftools-use-org-id nil ; Remove ID on PROPERTIES drawer 
          org-noter-pdftools-use-unique-org-id nil) 
-  ;; Add a function to ensure precise note is inserted
+  ;; Add a function to straight precise note is inserted
   (defun org-noter-pdftools-insert-precise-note (&optional toggle-no-questions)
     (interactive "P")
     (org-noter--with-valid-session
@@ -466,18 +696,32 @@ With a prefix ARG, remove start location."
 ;; PDF TOOLS & LATEX 
 ;; ------------------------------------------------------------
 (use-package pdf-tools
-  :ensure t
+  :straight t
   :magic ("%PDF" . pdf-view-mode)
   :bind (:map pdf-view-mode-map
               ("j" . pdf-view-next-line-or-next-page)
               ("k" . pdf-view-previous-line-or-previous-page))
   :config
-  (pdf-tools-install :no-query))
+  (pdf-tools-install))
 
-(use-package writeroom-mode
-  :ensure t
+;; (use-package image-roll
+;;   :straight (image-roll :type git :host github :repo "dalanicolai/image-roll.el"))
+
+;; (use-package writeroom-mode
+;;   :straight t
+;;   :after org
+;;   :config
+;;   (setq writeroom-fullscreen-effect 'maximized)
+;;   (setq writeroom-width 100)
+;;   (setq writeroom-mode-line 't))
+
+(use-package olivetti
+  :straight t
   :after org
   :config
-  (setq writeroom-fullscreen-effect 'maximized)
-  (setq writeroom-width 100)
-  (setq writeroom-mode-line 't))
+  (olivetti-set-width 90))
+
+(use-package focus
+  :straight t
+  :after org)
+
